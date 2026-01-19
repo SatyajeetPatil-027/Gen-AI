@@ -1,0 +1,69 @@
+!pip install --quiet openai
+
+
+import os
+os.environ["OPENAI_API_KEY"] ="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+
+import os
+
+api_key = os.getenv("OPENAI_API_KEY")
+assert api_key is not None, "OPENAI_API_KEY is not set"
+print("API key loaded")
+
+from openai import OpenAI
+
+client = OpenAI()
+
+def call_gpt4o_mini(prompt,temperature=0.2):
+  response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt}
+    ],
+    temperature=temperature
+  )
+  return response.choices[0].message.content
+
+
+def chain_of_thought(question):
+  prompt = f"""
+Solve the problem step by step and explain your reasoning.
+
+Question:
+{question}
+
+Let's think step by step.
+Answer:
+"""
+  return call_gpt4o_mini(prompt)
+
+print(chain_of_thought(
+    "A cyclist rides 90 k in 3 hours. What is the average speed ?"
+))
+
+def few_shot_sentiment(text):
+  prompt = f"""
+Classify the sentiment as Positive, Negative or Neutral.
+
+Example 1:
+Text: I love this  movie.
+Sentiment: Positive
+
+Example 2:
+Text: I hate this movie.
+Sentiment: Negative
+
+Example 3:
+Text: The delivery arrived in time.
+Sentiment: Neutral
+
+Text: {text}
+Sentiment:
+"""
+  return call_gpt4o_mini(prompt)
+
+print(few_shot_sentiment(
+    "I love this movie"
+))
