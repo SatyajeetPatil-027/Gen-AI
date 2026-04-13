@@ -1,0 +1,134 @@
+Install Required Libraries
+
+pip install langgraph langchain langchain-openai openai
+
+Set Up the API Key
+
+import os
+os.environ["OPENAI_API_KEY"] = "Enter your api_key"
+
+Import Required Modules
+
+from typing import TypedDict, Optional
+from langgraph.graph import StateGraph, END
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+
+Define the Agent State
+
+class AgentState(TypedDict):
+    user_input: str
+    decision: Optional[str]
+    response: Optional[str]
+
+Initialize the Language Model
+
+llm = ChatOpenAI(
+    model="gpt-3.5-turbo",
+    temperature=0.3
+)
+
+Create the Input Processing Node
+
+def input_node(state: AgentState) -> AgentState:
+    print("Input Node Activated")
+    return state
+
+Create the Decision (Router) Node
+
+def decision_node(state: AgentState) -> AgentState:
+    print("Decision Node Activated")
+
+    user_text = state["user_input"].lower()
+
+    if "search" in user_text or "find" in user_text:
+        state["decision"] = "tool"
+    else:
+        state["decision"] = "llm"
+
+    return state
+
+Create the LLM Response Node
+
+def llm_node(state: AgentState) -> AgentState:
+    print("LLM Node Activated")
+
+    message = HumanMessage(content=state["user_input"])
+    result = llm([message])
+
+    state["response"] = result.content
+    return state
+
+Create a Tool Node (Simulated Search Tool)
+
+def tool_node(state: AgentState) -> AgentState:
+    print("Tool Node Activated")
+
+    query = state["user_input"]
+    state["response"] = f"Search results for '{query}' retrieved successfully."
+    return state
+
+Create the Final Output Node
+
+def final_node(state: AgentState) -> AgentState:
+    print("Final Node Activated")
+    return state
+
+Initialize the Graph
+
+workflow = StateGraph(AgentState)
+
+Add Nodes to the Graph
+
+workflow.add_node("input", input_node)
+workflow.add_node("decision", decision_node)
+workflow.add_node("llm", llm_node)
+workflow.add_node("tool", tool_node)
+workflow.add_node("final", final_node)
+
+Set the Entry Point
+
+workflow.set_entry_point("input")
+
+Define Conditional Routing
+
+def route_decision(state: AgentState):
+    return state["decision"]
+
+
+workflow.add_conditional_edges(
+    "decision",
+    route_decision,
+    {
+        "llm": "llm",
+        "tool": "tool"
+    }
+)
+
+Add Standard Edges
+
+workflow.add_edge("input", "decision")
+workflow.add_edge("llm", "final")
+workflow.add_edge("tool", "final")
+workflow.add_edge("final", END)
+
+Compile the Graph
+
+agent = workflow.compile()
+
+Provide Input to the Agent
+
+input_data = {
+    "user_input": "Search latest applications of graph-based AI agents",
+    "decision": None,
+    "response": None
+}
+
+Execute the Graph
+
+output = agent.invoke(input_data)
+
+Display the Output
+
+print("\nFinal Agent Output:")
+print(output["response"])
